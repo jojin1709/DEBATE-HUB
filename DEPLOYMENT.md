@@ -70,3 +70,19 @@ npm run build
 # Start production server
 npm run start
 ```
+
+---
+
+## ☁️ Free Deployment (Vercel)
+
+Since this is a Next.js application, the easiest and completely **free** way to deploy it is using [Vercel](https://vercel.com/) (the creators of Next.js).
+
+1. Go to [Vercel.com](https://vercel.com/signup) and sign up with your GitHub account.
+2. Click **Add New Project**.
+3. Select your `DEBATE-HUB` repository from GitHub and click **Import**.
+4. In the **Environment Variables** section, add your `GROQ_API_KEY`:
+   - **Key:** `GROQ_API_KEY`
+   - **Value:** `gsk_your_actual_key_here`
+5. Click **Deploy**.
+
+Vercel will automatically build the app and give you a free, live `https://your-project.vercel.app` domain! Every time you push new code to your `main` branch on GitHub, Vercel will automatically rebuild and update your live site.
