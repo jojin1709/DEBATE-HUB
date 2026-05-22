@@ -102,6 +102,8 @@ export async function createDebate(formData: {
   description?: string
   category_id?: string
   is_anonymous?: boolean
+  media_url?: string
+  media_type?: string
 }): Promise<{ data: any | null; error: string | null }> {
   try {
     const { databases, account } = await createAdminClient()
@@ -116,7 +118,9 @@ export async function createDebate(formData: {
       status: "active",
       agree_count: 0,
       disagree_count: 0,
-      view_count: 0
+      view_count: 0,
+      media_url: formData.media_url || null,
+      media_type: formData.media_type || null
     })
 
     revalidatePath("/")

@@ -37,6 +37,8 @@ export async function createComment(
   content: string,
   stance: "agree" | "disagree" | "neutral",
   parentId?: string,
+  media_url?: string,
+  media_type?: string
 ): Promise<{ data: any | null; error: string | null }> {
   try {
     const { databases, account } = await createAdminClient()
@@ -47,7 +49,9 @@ export async function createComment(
       author_id: user.$id,
       content,
       stance,
-      upvotes: 0
+      upvotes: 0,
+      media_url: media_url || null,
+      media_type: media_type || null
     })
 
     // Increment comment count on debate

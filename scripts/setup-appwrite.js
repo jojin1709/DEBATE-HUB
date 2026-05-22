@@ -1,4 +1,4 @@
-const { Client, Databases, ID } = require('node-appwrite');
+const { Client, Databases, Storage, ID, Permission, Role } = require('node-appwrite');
 require('dotenv').config({ path: '.env.development' });
 
 async function setupAppwrite() {
@@ -8,21 +8,19 @@ async function setupAppwrite() {
     .setKey(process.env.APPWRITE_API_KEY);
 
   const databases = new Databases(client);
+  const storage = new Storage(client);
   const dbId = 'debatehub_main';
 
   console.log('🚀 Starting Appwrite Database Setup...');
 
   try {
-    console.log('1. Creating Database: debatehub_main');
     try {
+      await databases.get(dbId);
+      console.log('ℹ️ Database already exists.');
+    } catch (e) {
+      console.log('1. Creating Database: debatehub_main');
       await databases.create(dbId, 'DebateHub Database');
       console.log('✅ Database created.');
-    } catch (e) {
-      if (e.code === 409) {
-        console.log('ℹ️ Database already exists.');
-      } else {
-        throw e;
-      }
     }
 
     // 1. Profiles Collection
@@ -60,7 +58,9 @@ async function setupAppwrite() {
       await databases.createIntegerAttribute(dbId, 'debates', 'disagree_count', false, 0, 1000000, 0);
       await databases.createIntegerAttribute(dbId, 'debates', 'view_count', false, 0, 1000000, 0);
       await databases.createBooleanAttribute(dbId, 'debates', 'is_anonymous', false, false);
-      console.log('✅ Debates Collection created.');
+      await databases.createStringAttribute(dbId, 'debates', 'media_url', 1000, false);
+      await databases.createStringAttribute(dbId, 'debates', 'media_type', 50, false);
+      console.log('✅ Debates Collection created/updated.');
     } catch (e) { if (e.code !== 409) console.error(e.message); else console.log('ℹ️ Debates exists.'); }
 
     // 4. Comments Collection
@@ -72,8 +72,22 @@ async function setupAppwrite() {
       await databases.createStringAttribute(dbId, 'comments', 'content', 5000, true);
       await databases.createStringAttribute(dbId, 'comments', 'stance', 255, true);
       await databases.createIntegerAttribute(dbId, 'comments', 'upvotes', false, 0, 1000000, 0);
-      console.log('✅ Comments Collection created.');
+      await databases.createStringAttribute(dbId, 'comments', 'media_url', 1000, false);
+      await databases.createStringAttribute(dbId, 'comments', 'media_type', 50, false);
+      console.log('✅ Comments Collection created/updated.');
     } catch (e) { if (e.code !== 409) console.error(e.message); else console.log('ℹ️ Comments exists.'); }
+
+    // 5. Media Uploads Bucket
+    console.log('6. Creating Storage Bucket for Media...');
+    try {
+      await storage.createBucket('media_uploads', 'Media Uploads', [
+        Permission.read(Role.any()),
+        Permission.create(Role.users()),
+        Permission.update(Role.users()),
+        Permission.delete(Role.users()),
+      ], false, true, undefined, ['jpg', 'png', 'jpeg', 'mp4', 'mp3', 'wav']);
+      console.log('✅ Media Storage Bucket created.');
+    } catch(e) { if (e.code !== 409) console.error(e.message); else console.log('ℹ️ Media Bucket exists.'); }
 
     console.log('🎉 Setup Complete! Add NEXT_PUBLIC_APPWRITE_DATABASE_ID="debatehub_main" to your env variables.');
   } catch (error) {

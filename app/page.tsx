@@ -1,41 +1,32 @@
-import { createClient } from "@/lib/supabase/server"
+import { getCurrentUser } from "@/lib/actions/debates"
 import { LeftSidebar } from "@/components/left-sidebar"
 import { MainFeedDb } from "@/components/main-feed-db"
 import { RightSidebar } from "@/components/right-sidebar"
 import { MobileNav } from "@/components/mobile-nav"
 import { IconSidebar } from "@/components/icon-sidebar"
 import { Suspense } from "react"
+import { createAdminClient } from "@/lib/appwrite/server"
+import { Query } from "node-appwrite"
 
 export default async function Home() {
-  const supabase = await createClient()
+  const userProfile = await getCurrentUser()
+  const user = userProfile ? { id: userProfile.$id || userProfile.id } : null
   
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  // Get user profile if logged in
-  let profile = null
-  if (user) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url, bio, points, level')
-      .eq('id', user.id)
-      .single()
-    profile = profileData
-  }
+  let profile = userProfile
   
   // Get user's votes if logged in
   let userVotes: Record<string, 'agree' | 'disagree'> = {}
   if (user) {
-    const { data: votes } = await supabase
-      .from('votes')
-      .select('debate_id, vote_type')
-      .eq('user_id', user.id)
-    
-    if (votes) {
-      votes.forEach((v: any) => {
+    try {
+      const { databases } = await createAdminClient()
+      const response = await databases.listDocuments("debatehub_main", "votes", [
+        Query.equal("user_id", user.id)
+      ])
+      
+      response.documents.forEach((v: any) => {
         userVotes[v.debate_id] = v.vote_type
       })
-    }
+    } catch(e) {}
   }
 
   return (
@@ -83,4 +74,3 @@ export default async function Home() {
     </div>
   )
 }
-

@@ -24,12 +24,17 @@ import {
   Plus,
   TrendingUp,
   Loader2,
+  Image as ImageIcon,
+  X,
+  Upload,
 } from "lucide-react"
 import { submitVote } from "@/lib/actions/votes"
 import { createComment, voteOnComment, type Comment } from "@/lib/actions/comments"
 import { toggleBookmark } from "@/lib/actions/bookmarks"
 import { type Debate } from "@/lib/actions/debates"
 import { moderateComment, generateDebateSummary, suggestRebuttals } from "@/lib/ai"
+import { storage } from "@/lib/appwrite/client"
+import { ID } from "appwrite"
 import Link from "next/link"
 
 interface DebateDetailClientProps {
@@ -83,6 +88,9 @@ export function DebateDetailClient({
   const [newArgument, setNewArgument] = useState("")
   const [newStance, setNewStance] = useState<"agree" | "disagree" | "neutral">("neutral")
   const [commentError, setCommentError] = useState<string | null>(null)
+  
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
   
   // Replying state maps parent comment ID -> reply text
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({})
@@ -230,10 +238,34 @@ export function DebateDetailClient({
 
     startTransition(async () => {
       try {
+        let mediaUrl = null
+        let mediaType = null
+
+        if (mediaFile) {
+          setIsUploadingMedia(true)
+          try {
+            const upload = await storage.createFile('media_uploads', ID.unique(), mediaFile)
+            const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1'
+            const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || ''
+            mediaUrl = `${endpoint}/storage/buckets/media_uploads/files/${upload.$id}/view?project=${projectId}`
+            if (mediaFile.type.startsWith('image/')) mediaType = 'image'
+            else if (mediaFile.type.startsWith('video/')) mediaType = 'video'
+            else if (mediaFile.type.startsWith('audio/')) mediaType = 'audio'
+            else mediaType = 'file'
+          } catch (err: any) {
+            setCommentError("Failed to upload media: " + err.message)
+            setIsUploadingMedia(false)
+            return
+          }
+          setIsUploadingMedia(false)
+        }
+
         const result = await createComment({
           debate_id: debate.id,
           content: newArgument.trim(),
           stance: newStance,
+          media_url: mediaUrl,
+          media_type: mediaType
         })
 
         if (result.error) {
@@ -241,11 +273,13 @@ export function DebateDetailClient({
         } else if (result.data) {
           setComments(prev => [result.data as Comment, ...prev])
           setNewArgument("")
+          setMediaFile(null)
           setRebuttalSuggestions([])
         }
       } catch (err) {
         console.error("Add comment error:", err)
         setCommentError("Failed to submit argument. Try again.")
+        setIsUploadingMedia(false)
       }
     })
   }
@@ -419,10 +453,26 @@ export function DebateDetailClient({
 
         {/* Description / Background */}
         {debate.description && (
-          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pb-2 border-b border-border/60">
+          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pb-2">
             {debate.description}
           </div>
         )}
+
+        {/* Debate Media */}
+        {debate.media_url && (
+          <div className="rounded-xl overflow-hidden border border-border bg-black/5 flex items-center justify-center max-h-[400px]">
+            {debate.media_type === 'video' ? (
+              <video src={debate.media_url} controls className="max-h-[400px] w-auto max-w-full" />
+            ) : debate.media_type === 'audio' ? (
+              <div className="w-full p-6 bg-secondary/50">
+                <audio src={debate.media_url} controls className="w-full" />
+              </div>
+            ) : (
+              <img src={debate.media_url} alt="Debate Media" className="max-h-[400px] w-auto max-w-full object-contain" />
+            )}
+          </div>
+        )}
+        <div className="border-b border-border/60 pb-2"></div>
 
         {/* Voting Panel */}
         <div className="flex flex-col gap-3 py-2">
@@ -620,6 +670,36 @@ export function DebateDetailClient({
               }
               className="min-h-24 rounded-xl bg-background border-border text-sm py-2.5"
             />
+            {/* Media Upload for Comment */}
+            {!mediaFile ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  id="comment-media"
+                  className="hidden"
+                  accept="image/*,video/*,audio/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setMediaFile(e.target.files[0])
+                    }
+                  }}
+                />
+                <Label htmlFor="comment-media" className="cursor-pointer flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
+                  <ImageIcon className="w-4 h-4" />
+                  Attach Media
+                </Label>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between bg-secondary/30 p-2 rounded-lg border border-border">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Upload className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-xs font-medium truncate">{mediaFile.name}</span>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMediaFile(null)}>
+                  <X className="w-3.5 h-3.5 text-destructive" />
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* AI Suggestion Bar */}
@@ -668,10 +748,10 @@ export function DebateDetailClient({
               type="submit"
               size="sm"
               className="gap-1.5 rounded-lg px-4 font-semibold"
-              disabled={isPending}
+              disabled={isPending || isUploadingMedia}
             >
-              <Send className="w-3.5 h-3.5" />
-              Submit Argument
+              {isUploadingMedia ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {isUploadingMedia ? "Uploading..." : "Submit Argument"}
             </Button>
           </div>
         </form>
@@ -764,9 +844,26 @@ export function DebateDetailClient({
                   </div>
 
                   {/* Comment Body */}
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                    {comment.content}
-                  </p>
+                  <div className="flex flex-col gap-3">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                      {comment.content}
+                    </p>
+                    
+                    {/* Comment Media */}
+                    {comment.media_url && (
+                      <div className="rounded-xl overflow-hidden border border-border bg-black/5 flex items-center justify-center max-h-[300px] mt-1">
+                        {comment.media_type === 'video' ? (
+                          <video src={comment.media_url} controls className="max-h-[300px] w-auto max-w-full" />
+                        ) : comment.media_type === 'audio' ? (
+                          <div className="w-full p-4 bg-secondary/50">
+                            <audio src={comment.media_url} controls className="w-full" />
+                          </div>
+                        ) : (
+                          <img src={comment.media_url} alt="Argument Media" className="max-h-[300px] w-auto max-w-full object-contain" />
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Footer actions */}
                   <div className="flex items-center justify-between pt-1 border-t border-border/40 mt-1">

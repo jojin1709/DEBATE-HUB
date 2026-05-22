@@ -22,7 +22,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { useClientNavigation } from "@/hooks/use-client-navigation"
-import { createClient } from "@/lib/supabase/client"
+import { account } from "@/lib/appwrite/client"
 import { useRouter } from "next/navigation"
 
 const sidebarNavItems = [
@@ -42,31 +42,29 @@ export function MobileNav() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      setUser(currentUser)
-      if (currentUser) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentUser.id)
-          .single()
-        setProfile(profileData)
+      try {
+        const currentUser = await account.get()
+        setUser(currentUser)
+        setProfile(currentUser) // Since Appwrite returns name natively
+      } catch (e) {
+        setUser(null)
       }
     }
     fetchUser()
-  }, [supabase])
+  }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setOpen(false)
-    router.push("/auth/login")
+    try {
+      await account.deleteSession("current")
+      setOpen(false)
+      router.push("/auth/login")
+    } catch (e) {}
   }
 
-  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Guest"
+  const displayName = profile?.name || user?.name || "Guest"
   const initials = displayName.charAt(0).toUpperCase() || "G"
 
   return (
@@ -157,14 +155,12 @@ export function MobileNav() {
                     <>
                       <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-secondary cursor-pointer">
                         <Avatar className="w-9 h-9">
-                          <AvatarImage src={profile?.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
-                          <p className="text-xs text-muted-foreground">Level {profile?.level || 1} · {profile?.points || 0} pts</p>
                         </div>
                       </div>
                       <Button

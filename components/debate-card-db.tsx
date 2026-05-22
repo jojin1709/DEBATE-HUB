@@ -163,6 +163,21 @@ export function DebateCardDb({
         <h3 className="text-base font-bold text-foreground leading-snug text-balance line-clamp-3 cursor-pointer group-hover:text-primary transition-colors duration-150">
           {debate.title}
         </h3>
+        {debate.media_url && (
+          <div className="mt-3 w-full h-32 rounded-xl overflow-hidden bg-muted border border-border/60">
+            {debate.media_type === 'video' ? (
+              <video src={debate.media_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+            ) : debate.media_type === 'audio' ? (
+              <div className="w-full h-full flex items-center justify-center bg-secondary/50">
+                <span className="text-xs text-muted-foreground font-semibold flex items-center gap-2">
+                  🎙️ Audio Attachment
+                </span>
+              </div>
+            ) : (
+              <img src={debate.media_url} alt="Debate thumbnail" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+            )}
+          </div>
+        )}
       </Link>
 
       {/* Voting Section */}

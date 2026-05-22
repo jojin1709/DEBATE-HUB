@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
-import { getDebateById } from "@/lib/actions/debates"
-import { getCommentsByDebateId } from "@/lib/actions/comments"
+import { getCurrentUser, getDebateById } from "@/lib/actions/debates"
+import { getComments } from "@/lib/actions/comments"
 import { LeftSidebar } from "@/components/left-sidebar"
 import { RightSidebar } from "@/components/right-sidebar"
 import { MobileNav } from "@/components/mobile-nav"
@@ -32,26 +31,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function DebateDetailPage({ params }: PageProps) {
   const { id } = await params
-  const supabase = await createClient()
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Get user profile if logged in
-  let profile = null
-  if (user) {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url, bio, points, level")
-      .eq("id", user.id)
-      .single()
-    profile = profileData
-  }
+  // Get current user profile
+  let profile = await getCurrentUser()
+  const user = profile ? { id: profile.$id || profile.id } : null
 
   // Fetch the debate and its comments
   const [{ data: debate }, { data: comments = [] }] = await Promise.all([
     getDebateById(id),
-    getCommentsByDebateId(id),
+    getComments(id),
   ])
 
   if (!debate) {
