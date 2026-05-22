@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/appwrite/server"
 import { Query } from "node-appwrite"
 
 export default async function Home() {
-  const userProfile = await getCurrentUser()
+  const userProfile: any = await getCurrentUser()
   const user = userProfile ? { id: userProfile.$id || userProfile.id } : null
   
   let profile = userProfile

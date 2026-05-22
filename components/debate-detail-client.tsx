@@ -28,7 +28,7 @@ import {
   X,
   Upload,
 } from "lucide-react"
-import { submitVote } from "@/lib/actions/votes"
+import { voteOnDebate } from "@/lib/actions/votes"
 import { createComment, voteOnComment, type Comment } from "@/lib/actions/comments"
 import { toggleBookmark } from "@/lib/actions/bookmarks"
 import { type Debate } from "@/lib/actions/debates"
@@ -36,6 +36,7 @@ import { moderateComment, generateDebateSummary, suggestRebuttals } from "@/lib/
 import { storage } from "@/lib/appwrite/client"
 import { ID } from "appwrite"
 import Link from "next/link"
+import { Label } from "@/components/ui/label"
 
 interface DebateDetailClientProps {
   debate: Debate
@@ -183,7 +184,7 @@ export function DebateDetailClient({
 
     startTransition(async () => {
       try {
-        await submitVote(debate.id, voteType)
+        await voteOnDebate(debate.id, voteType)
       } catch (error) {
         console.error("Voting error:", error)
         // Rollback counts in case of failure
@@ -260,13 +261,14 @@ export function DebateDetailClient({
           setIsUploadingMedia(false)
         }
 
-        const result = await createComment({
-          debate_id: debate.id,
-          content: newArgument.trim(),
-          stance: newStance,
-          media_url: mediaUrl,
-          media_type: mediaType
-        })
+        const result = await createComment(
+          debate.id,
+          newArgument.trim(),
+          newStance,
+          undefined,
+          mediaUrl || undefined,
+          mediaType || undefined
+        )
 
         if (result.error) {
           setCommentError(result.error)
@@ -307,11 +309,12 @@ export function DebateDetailClient({
 
     startTransition(async () => {
       try {
-        const result = await createComment({
-          debate_id: debate.id,
-          content: text.trim(),
-          parent_id: parentId,
-        })
+        const result = await createComment(
+          debate.id,
+          text.trim(),
+          "neutral",
+          parentId
+        )
 
         if (result.error) {
           console.error("Reply error:", result.error)
@@ -351,7 +354,7 @@ export function DebateDetailClient({
           if (c.id === commentId) {
             let userVote = c.user_vote
             let upvotes = c.upvotes
-            let downvotes = c.downvotes
+            let downvotes = c.downvotes ?? 0
             if (voteType === "up") {
               if (userVote === "up") {
                 userVote = null
@@ -434,7 +437,7 @@ export function DebateDetailClient({
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">{timeAgo(debate.created_at)}</span>
+            <span className="text-xs text-muted-foreground">{timeAgo(debate.$createdAt)}</span>
             <Button
               variant="ghost"
               size="icon"
@@ -584,16 +587,15 @@ export function DebateDetailClient({
               <span className="text-[10px] text-muted-foreground">Author</span>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <MessageCircle className="w-4 h-4" />
-              {comments.length} Arguments
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Eye className="w-4 h-4" />
-              {debate.view_count} Views
-            </span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <span>{timeAgo(debate.$createdAt)}</span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+            {comments.length} Arguments
           </div>
+          <span className="flex items-center gap-1.5">
+            <Eye className="w-4 h-4" />
+            {debate.view_count} Views
+          </span>
         </div>
       </article>
 
@@ -839,7 +841,7 @@ export function DebateDetailClient({
                           {comment.stance}
                         </Badge>
                       )}
-                      <span className="text-[10px] text-muted-foreground">{timeAgo(comment.created_at)}</span>
+                      <span className="text-[10px] text-muted-foreground">{timeAgo(comment.$createdAt || comment.created_at || "")}</span>
                     </div>
                   </div>
 
@@ -1003,7 +1005,7 @@ export function DebateDetailClient({
                               {reply.author?.display_name || "Anonymous"}
                             </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">{timeAgo(reply.created_at)}</span>
+                          <span className="text-[10px] text-muted-foreground">{timeAgo(reply.$createdAt || reply.created_at || "")}</span>
                         </div>
                         <p className="text-xs text-foreground leading-relaxed">
                           {reply.content}

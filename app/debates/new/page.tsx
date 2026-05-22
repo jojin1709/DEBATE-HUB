@@ -94,8 +94,8 @@ export default function NewDebatePage() {
       description,
       category_id: categorySlug,
       is_anonymous: isAnonymous,
-      media_url: mediaUrl,
-      media_type: mediaType
+      media_url: mediaUrl || undefined,
+      media_type: mediaType || undefined
     })
 
     if (submitError) {

@@ -17,7 +17,7 @@ import {
   ChevronUp,
   ArrowRight,
 } from 'lucide-react'
-import { submitVote } from '@/lib/actions/votes'
+import { voteOnDebate } from '@/lib/actions/votes'
 import { createComment } from '@/lib/actions/comments'
 import { type Debate } from '@/lib/actions/debates'
 
@@ -114,7 +114,7 @@ export function DebateCardDb({
 
     startTransition(async () => {
       try {
-        const result = await submitVote(debate.id, voteType)
+        const result = await voteOnDebate(debate.id, voteType)
         if (!result.success) {
           // Rollback if failure
           setVoted(oldVoted)
@@ -154,7 +154,7 @@ export function DebateCardDb({
           )}
         </div>
         <span className="text-[11px] font-medium text-muted-foreground flex-shrink-0">
-          {timeAgo(debate.created_at)}
+          {timeAgo(debate.$createdAt)}
         </span>
       </div>
 

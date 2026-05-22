@@ -6,6 +6,28 @@ import { ID, Query } from "node-appwrite"
 
 const DATABASE_ID = "debatehub_main"
 
+export interface Comment {
+  id: string
+  debate_id: string
+  content: string
+  stance: "agree" | "disagree" | "neutral"
+  upvotes: number
+  downvotes?: number
+  author?: {
+    id: string
+    display_name?: string
+    username?: string
+    level?: number
+  }
+  media_url?: string | null
+  media_type?: string | null
+  created_at?: string
+  $createdAt?: string
+  replies?: Comment[]
+  is_bookmarked?: boolean
+  user_vote?: "up" | "down" | null
+}
+
 export async function getComments(debateId: string): Promise<{ data: any[]; error: string | null }> {
   try {
     const { databases } = await createAdminClient()
@@ -14,7 +36,7 @@ export async function getComments(debateId: string): Promise<{ data: any[]; erro
       Query.orderDesc("upvotes")
     ])
 
-    const comments = response.documents.map(doc => ({...doc, id: doc.$id}))
+    const comments: any[] = response.documents.map(doc => ({...doc, id: doc.$id}))
 
     // Fetch authors
     for (let comment of comments) {

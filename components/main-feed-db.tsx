@@ -54,7 +54,7 @@ export function MainFeedDb({ userId, userVotes = {} }: MainFeedDbProps) {
           getCategories(),
         ])
         setDebates(debatesResult?.data || [])
-        setCategories(categoriesResult?.data || [])
+        setCategories((categoriesResult?.data || []) as Category[])
       } catch (error) {
         console.error('[v0] Error loading debates:', error)
       } finally {
@@ -264,7 +264,7 @@ export function MainFeedDb({ userId, userVotes = {} }: MainFeedDbProps) {
                     userVotes[debate.id]
                       ? {
                           debate_id: debate.id,
-                          vote_type: userVotes[debate.id],
+                          vote_type: userVotes[debate.id] as "agree" | "disagree",
                         }
                       : null
                   }
@@ -311,8 +311,8 @@ function NotificationsView() {
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      const data = await getNotifications()
-      setNotifications(data)
+      const response = await getNotifications()
+      setNotifications(response.data || [])
     } catch (e) {
       console.error(e)
     } finally {
@@ -539,7 +539,7 @@ function ProfileView({ userId, userVotes, debates }: { userId?: string; userVote
         ) : (
           <div className="flex flex-col gap-3">
             {debatesCreated.map(debate => (
-              <DebateCardDb key={debate.id} debate={debate} userVote={userVotes[debate.id] ? { debate_id: debate.id, vote_type: userVotes[debate.id] } : null} userId={profile?.id} />
+              <DebateCardDb key={debate.id} debate={debate} userVote={userVotes[debate.id] ? { debate_id: debate.id, vote_type: userVotes[debate.id] as "agree" | "disagree" } : null} userId={profile?.id} />
             ))}
           </div>
         )}

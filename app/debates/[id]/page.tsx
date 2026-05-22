@@ -33,7 +33,7 @@ export default async function DebateDetailPage({ params }: PageProps) {
   const { id } = await params
 
   // Get current user profile
-  let profile = await getCurrentUser()
+  let profile: any = await getCurrentUser()
   const user = profile ? { id: profile.$id || profile.id } : null
 
   // Fetch the debate and its comments

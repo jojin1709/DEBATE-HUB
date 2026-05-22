@@ -21,6 +21,8 @@ export type Debate = {
   view_count: number
   ai_summary: string | null
   ai_key_points: string[] | null
+  media_url?: string | null
+  media_type?: string | null
   ends_at: string | null
   $createdAt: string
   $updatedAt: string
@@ -28,7 +30,7 @@ export type Debate = {
   author?: { username: string; display_name: string; avatar_url: string | null } | null
   user_vote?: string | null
   is_bookmarked?: boolean
-  id?: string // For compatibility
+  id: string // For compatibility
 }
 
 export async function getDebates(options?: {
@@ -63,7 +65,7 @@ export async function getDebates(options?: {
     }
 
     const response = await databases.listDocuments(DATABASE_ID, "debates", queries)
-    const debates = response.documents.map(doc => ({...doc, id: doc.$id}))
+    const debates: any[] = response.documents.map(doc => ({...doc, id: doc.$id}))
 
     // Fetch categories and authors manually since Appwrite doesn't auto-join
     for (let debate of debates) {
@@ -153,5 +155,26 @@ export async function getCurrentUser() {
     return user
   } catch (e) {
     return null
+  }
+}
+
+export async function getTrendingTopics() {
+  return { data: [
+    { id: "1", tag: "Technology", debate_count: 120 },
+    { id: "2", tag: "AI", debate_count: 95 },
+    { id: "3", tag: "Politics", debate_count: 85 }
+  ], error: null }
+}
+
+export async function getTopContributors(limit = 5) {
+  try {
+    const { databases } = await createAdminClient()
+    const response = await databases.listDocuments(DATABASE_ID, "profiles", [
+      Query.orderDesc("points"),
+      Query.limit(limit)
+    ])
+    return { data: response.documents.map(doc => ({...doc, id: doc.$id})), error: null }
+  } catch (error: any) {
+    return { data: [], error: error.message }
   }
 }

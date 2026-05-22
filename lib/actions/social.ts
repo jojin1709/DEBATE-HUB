@@ -58,3 +58,50 @@ export async function toggleFollow(targetUserId: string): Promise<{ success: boo
     return { success: false, is_following: false, error: error.message }
   }
 }
+
+export async function markAllNotificationsRead(): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const { databases, account } = await createAdminClient()
+    const user = await account.get()
+    
+    const unread = await databases.listDocuments(DATABASE_ID, "notifications", [
+      Query.equal("user_id", user.$id),
+      Query.equal("is_read", false)
+    ])
+    
+    for (const doc of unread.documents) {
+      await databases.updateDocument(DATABASE_ID, "notifications", doc.$id, { is_read: true })
+    }
+    
+    return { success: true, error: null }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getLeaderboard(): Promise<any[]> {
+  try {
+    const { databases } = await createAdminClient()
+    const response = await databases.listDocuments(DATABASE_ID, "profiles", [
+      Query.orderDesc("points"),
+      Query.limit(10)
+    ])
+    return response.documents.map(doc => ({...doc, id: doc.$id}))
+  } catch (error) {
+    return []
+  }
+}
+
+export async function getCurrentProfile(): Promise<any | null> {
+  try {
+    const { account, databases } = await createAdminClient()
+    const user = await account.get()
+    const response = await databases.listDocuments(DATABASE_ID, "profiles", [
+      Query.equal("$id", user.$id)
+    ])
+    if (response.documents.length > 0) return response.documents[0]
+    return user
+  } catch (error) {
+    return null
+  }
+}
